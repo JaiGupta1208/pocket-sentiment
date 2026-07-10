@@ -1,0 +1,7 @@
+.env
+.streamlit/secrets.toml
+secrets.toml
+__pycache__/
+*.pyc
+# NOTE: data/mentions.db IS committed on purpose — it's the data snapshot the
+# hosted dashboard reads. Regenerate it with `python run_all.py`.
