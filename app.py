@@ -146,10 +146,8 @@ with tab_themes:
         st.dataframe(neg.rename("complaints"), use_container_width=True)
 
         st.subheader("Theme health")
-        st.caption("Negative **rate** matters as much as volume — a small theme can be almost "
-                   "entirely negative. Sort by either column; watch the sample size.")
-        min_n = st.number_input("Minimum mentions to show", min_value=1, max_value=100, value=5, step=1,
-                                help="Hides tiny themes whose rates are statistically noisy.")
+        st.caption("Rate matters as much as volume — a small theme can be almost all negative.")
+        min_n = st.number_input("Minimum mentions to show", min_value=1, max_value=100, value=5, step=1)
         g = exploded.groupby("themes_list")
         health = pd.DataFrame({
             "mentions": g.size(),
@@ -172,8 +170,7 @@ with tab_themes:
                 "negative": st.column_config.NumberColumn("negative"),
             })
         if len(small):
-            st.caption(f"{len(small)} theme(s) hidden with fewer than {min_n} mentions "
-                       f"(too small to read a rate into): {', '.join(small['theme'])}.")
+            st.caption(f"Hidden (under {min_n} mentions, too small to trust): {', '.join(small['theme'])}.")
 
 # ================= SOURCES =================
 with tab_sources:
@@ -193,7 +190,7 @@ with tab_sources:
 
 # ================= FEED =================
 with tab_feed:
-    st.caption("The human-audit layer: filter, read the raw words, and sanity-check the model's calls.")
+    st.caption("Read the actual comments and check the model's calls.")
     fc1, fc2, fc3 = st.columns(3)
     sent_filter = fc1.multiselect("Mood", ["positive", "neutral", "negative", "mixed"], [])
     theme_options = sorted({t for lst in view["themes_list"] for t in lst})
@@ -201,11 +198,8 @@ with tab_feed:
     search = fc3.text_input("Search")
 
     gc1, gc2 = st.columns([1, 2])
-    low_only = gc1.checkbox("Review low-confidence only", value=False,
-                            help="Show only the model calls least likely to be right — the audit queue.")
-    max_conf = gc2.slider("Maximum confidence", 0.0, 1.0, 0.70, 0.05,
-                          disabled=not low_only,
-                          help="When 'Review low-confidence only' is on, show rows at or below this confidence.")
+    low_only = gc1.checkbox("Only the model's least-sure calls", value=False)
+    max_conf = gc2.slider("Maximum confidence", 0.0, 1.0, 0.70, 0.05, disabled=not low_only)
 
     feed = view.copy()
     if sent_filter:
@@ -240,28 +234,24 @@ with tab_ops:
     n_real, n_mock = len(real_df), int((df["is_mock"] == 1).sum())
 
     # ---- A. Pipeline ----
-    st.subheader("Pipeline architecture")
+    st.subheader("How a comment gets here")
     st.markdown(
         "```text\n"
-        "Sources (9)  →  Source-specific collectors  →  Common normalized schema\n"
-        "             →  SQLite store + dedup  →  Claude sentiment/theme classification\n"
-        "             →  QA & exception review  →  Streamlit dashboard + operational alerts\n"
+        "9 sources  →  a collector per source  →  one shared format\n"
+        "           →  SQLite + dedup  →  Claude tags sentiment & theme\n"
+        "           →  quick QA  →  this dashboard + alerts\n"
         "```")
     st.markdown(
-        "- **Collectors** turn each platform's raw records into one shared shape.\n"
-        "- **Normalized fields:** `source`, `native_id`, `kind`, `author`, `text`, `rating`, "
-        "`created_at`, `url`, `lang`, `is_mock`, `collected_at` → then `sentiment`, `themes`, "
-        "`confidence`, `classified_at` after classification.\n"
-        "- **Dedup:** each row's primary key is a deterministic hash of **`source` + native platform id**, "
-        "so re-running a collector never creates duplicates (`INSERT OR IGNORE`).\n"
-        "- **Classification:** Claude returns sentiment, 1–3 themes, a relevance judgment, and a confidence. "
-        "Streamlit reads the resulting records.")
-    st.info("This deployed prototype is **refreshable, not real-time streaming**. It reads a committed "
-            "SQLite snapshot; a live build would run collectors + classifier on a schedule into a hosted DB.",
-            icon="ℹ️")
+        "- Each source has its own collector; they all output the same fields, so nothing downstream cares "
+        "where a comment came from.\n"
+        "- Every row's id is a hash of **source + the platform's own id**, so re-running a collector can't "
+        "create duplicates.\n"
+        "- Claude then tags each one with sentiment, up to three themes, and a confidence.")
+    st.info("It's a snapshot you refresh, not a live stream — right now it reads a saved database. "
+            "A production version would run the collectors and Claude on a schedule.", icon="ℹ️")
 
     # ---- B. Real vs mock ----
-    st.subheader("Sources — real vs mocked")
+    st.subheader("What's real, what's mocked")
     counts = df.groupby("source").size()
     src_rows = []
     for s, (status, path) in SOURCE_STATUS.items():
@@ -270,64 +260,55 @@ with tab_ops:
                          "how it's collected / production path": path})
     src_tbl = pd.DataFrame(src_rows).sort_values(["status", "mentions"], ascending=[True, False])
     st.dataframe(src_tbl, use_container_width=True, hide_index=True)
-    st.caption(f"Real prototype data: **{n_real:,}** mentions (App Store, Google Play, Reddit, YouTube). "
-               f"Mocked & explicitly labelled: **{n_mock}** (Trustpilot, X, Facebook, Instagram, TikTok). "
-               "Mocked rows are excluded from headline numbers unless the sidebar toggle is on — they are "
-               "**not** real data.")
+    st.caption(f"{n_real:,} real (App Store, Google Play, Reddit, YouTube) · {n_mock} mocked and labelled "
+               "(Trustpilot, X, Facebook, Instagram, TikTok). Mocked rows stay out of the headline numbers "
+               "unless you toggle them on.")
 
     # ---- C. Cadence ----
-    st.subheader("Refresh cadence")
+    st.subheader("How often it updates")
     cc1, cc2 = st.columns(2)
     with cc1:
-        st.markdown("**Daily**")
-        st.markdown("- Collect new reviews & social mentions\n- Deduplicate\n"
-                    "- Classify only new / unclassified rows\n- Review urgent negatives")
-        st.markdown("**During launches / incidents**")
-        st.markdown("- Raise refresh frequency on high-priority sources where the API allows\n"
-                    "- Watch volume & negative-sentiment spikes more closely")
+        st.markdown("**Every day**")
+        st.markdown("- Pull new mentions, dedupe, tag the new ones\n- Skim the urgent negatives")
+        st.markdown("**During a launch or incident**")
+        st.markdown("- Pull the hot sources more often (where the API lets us)\n- Watch for spikes")
     with cc2:
-        st.markdown("**Weekly**")
-        st.markdown("- Review theme trends & top negatives (count *and* rate)\n"
-                    "- Review low-confidence classifications\n"
-                    "- Pick product / support / marketing / ops actions; record what changed")
-        st.markdown("**Monthly**")
-        st.markdown("- Review taxonomy, source coverage, costs, alert thresholds\n"
-                    "- Re-check model accuracy against a human-labelled sample")
-    st.caption("Actual refresh ability depends on each platform's API constraints.")
+        st.markdown("**Every week**")
+        st.markdown("- Look at theme trends and top negatives — by count *and* rate\n"
+                    "- Check the low-confidence calls\n- Pick something to act on, note what changed")
+        st.markdown("**Every month**")
+        st.markdown("- Revisit the themes, sources, cost, and alert levels\n"
+                    "- Re-check accuracy against a hand-labelled sample")
+    st.caption("How often we can actually pull depends on each platform's API.")
 
     # ---- D. Owner ----
-    st.subheader("Owner & operating loop")
+    st.subheader("Who runs it")
     oc1, oc2 = st.columns(2)
     with oc1:
-        st.markdown("**Primary owner** — Customer Experience / Support Ops / VoC lead")
-        st.markdown("- ~15 min/day on negative & urgent feedback\n"
-                    "- Triage support & shipping issues\n"
-                    "- Route defects → product/eng, messaging confusion → marketing\n"
-                    "- Maintain the pipeline; review classifier quality; weekly summary")
-        st.markdown("**Founder** — weekly review of top themes, major spikes, and decisions only "
-                    "(should not operate it daily).")
+        st.markdown("**Day to day** — a Customer Experience / Support lead")
+        st.markdown("- ~15 min a day on the negatives\n- Sends defects to product, messaging gaps to marketing\n"
+                    "- Keeps the pipeline running and spot-checks the model")
+        st.markdown("**The founder** dips in weekly for the big themes and decisions — not every day.")
     with oc2:
-        st.markdown("**Weekly operating loop**")
-        st.markdown("1. Review alerts\n2. Review negative-rate changes\n"
-                    "3. Open representative raw comments\n4. Validate classifications\n"
-                    "5. Assign actions\n6. Track whether the theme improves after intervention")
+        st.markdown("**The weekly loop**")
+        st.markdown("1. Check alerts\n2. See which negatives are rising\n3. Read a few real comments\n"
+                    "4. Sanity-check the tags\n5. Assign an action\n6. See if it improved next week")
 
     # ---- E. Alerts ----
-    st.subheader("Operational alerts")
+    st.subheader("What sets off an alert")
     st.markdown(
-        "- Negative share **> 30%** over a rolling 24h\n"
-        "- Daily volume **> 3×** the trailing 7-day average\n"
-        "- Any **1★** mentioning *shipping, damaged, refund,* or *no response*\n"
-        "- Sudden rise in *device reliability, transcription, shipping,* or *support* complaints\n"
-        "- A theme's negative rate rises materially week over week\n"
-        "- High-severity mention with **low classifier confidence**\n"
-        "- Collector failure / no new data from an expected source\n"
-        "- Unprocessed rows sitting in the classification queue")
-    st.caption("Thresholds are **starting assumptions** — tune them after observing normal volumes. "
-               "(Designed here; not yet wired to Slack.)")
+        "- Negatives cross **30%** in a day\n"
+        "- Volume jumps past **3×** the usual week\n"
+        "- A **1★** mentions *shipping, damaged, refund,* or *no response*\n"
+        "- Complaints about *reliability, transcription, shipping,* or *support* suddenly climb\n"
+        "- A theme gets sharply more negative week over week\n"
+        "- Something serious comes in that the model wasn't sure about\n"
+        "- A collector breaks, or a source goes quiet")
+    st.caption("These are starting points — we'd tune them once we know what normal looks like. "
+               "Designed, not yet wired to Slack.")
 
     # ---- F. QA ----
-    st.subheader("QA & model governance")
+    st.subheader("Keeping the model honest")
     conf = real_df["confidence"].dropna()
     drift = df["themes_list"].explode().dropna()
     drift_tags = sorted(set(drift) - set(THEME_TAXONOMY))
@@ -337,43 +318,34 @@ with tab_ops:
     q2.metric("Median confidence", f"{conf.median():.2f}" if len(conf) else "—")
     q3.metric("Below 0.70", f"{(conf < 0.70).mean()*100:.0f}%" if len(conf) else "—")
     q4.metric("Below 0.50", f"{(conf < 0.50).mean()*100:.0f}%" if len(conf) else "—")
-    st.caption(f"Real-data confidence, n={len(conf):,}. The model is **not assumed correct** — "
-               "these are the numbers that decide how hard we audit.")
+    st.caption(f"Confidence is the model's own certainty in each call (n={len(conf):,}) — a signal for what to "
+               "double-check, not a measured accuracy.")
     st.markdown(
-        "- Human-label a ~50–100 mention holdout; compare human vs model **sentiment** and **theme** labels\n"
-        "- Review low-confidence rows (Feed → *Review low-confidence only*)\n"
-        "- Use star rating vs predicted sentiment as a weak check on rated sources\n"
-        "- Inspect irrelevant \"Pocket\" mentions; keep high-severity low-confidence rows out of aggregate-only views\n"
-        "- Revisit prompt/taxonomy if agreement drops below the chosen bar")
+        "- Hand-label ~50–100 mentions and compare against the model to get a real accuracy read\n"
+        "- Work the low-confidence queue in the Feed\n"
+        "- Cross-check star ratings against predicted sentiment where we have stars\n"
+        "- Don't let a serious-but-unsure comment vanish into an aggregate")
     if drift_tags:
-        st.caption(f"**Theme drift:** the model coined {len(drift_tags)} tag(s) outside the fixed 16-item "
-                   f"taxonomy across {drift_rows} row(s): {', '.join(drift_tags)}. Worth a taxonomy review.")
+        st.caption(f"The model coined {len(drift_tags)} tag(s) outside the 16 set themes across "
+                   f"{drift_rows} row(s): {', '.join(drift_tags)} — worth a taxonomy look.")
 
     # ---- G. Cost ----
-    st.subheader("Cost")
-    st.caption("Classification is the only variable software cost. Figures are **directional assumptions** — "
-               "the formula is shown so they can be checked against live pricing.")
+    st.subheader("What it costs")
+    st.caption("Tagging with Claude is the only thing that costs money. Numbers are directional — the maths is below.")
     cost_tbl = pd.DataFrame({
-        "item": ["Collection (App Store/Play/Reddit/YouTube)", "Classification — Claude",
-                 "Storage", "Hosting", "Operator time"],
-        "today (~800/mo)": ["Free tiers / free quota", "~$2 / mo (directional)",
-                            "SQLite — ~free", "Streamlit Community Cloud — free",
-                            "~15 min/day + weekly review"],
-        "10× (~8,000/mo)": ["Mostly free; add mock-source API costs in prod", "~$15–20 / mo (directional)",
-                            "Managed Postgres — assume $15–50/mo", "Paid hosting — assume $20–50/mo",
-                            "~30 min/day + weekly review"],
+        "item": ["Collecting (App Store/Play/Reddit/YouTube)", "Tagging with Claude",
+                 "Storage", "Hosting", "Someone to run it"],
+        "today (~800/mo)": ["Free", "~$2 / mo", "SQLite — free", "Streamlit — free", "~15 min/day"],
+        "10× (~8,000/mo)": ["Free; paid access for mocked sources in prod", "~$15–20 / mo",
+                            "Postgres — ~$15–50/mo", "Paid host — ~$20–50/mo", "~30 min/day"],
     })
     st.dataframe(cost_tbl, use_container_width=True, hide_index=True)
-    with st.expander("How the Claude cost is calculated"):
+    with st.expander("The maths behind the Claude cost"):
         st.markdown(
-            "Batch of **20** mentions/call; each item sends up to 1,200 chars of text (~300 tokens) + "
-            "amortized system prompt; output is a small JSON object per item plus extended-thinking tokens.\n\n"
+            "20 mentions per call, ~300 tokens of text each. Only new mentions get billed.\n\n"
             "```text\n"
-            "per item  ≈ ~330 input tokens + ~90 output tokens\n"
-            "cost/item ≈ 330×$3/M (in) + 90×$15/M (out)  ≈ $0.0023   [Sonnet-class pricing assumption]\n"
-            "800 new/mo  ≈ 800 × $0.0023   ≈ ~$1.8 / mo\n"
-            "8,000 new/mo ≈ 8,000 × $0.0023 ≈ ~$18 / mo\n"
+            "per item  ≈ 330 in + 90 out tokens ≈ $0.0023   (Sonnet-class pricing, an assumption)\n"
+            "800/mo    ≈ ~$1.8/mo\n"
+            "8,000/mo  ≈ ~$18/mo\n"
             "```\n"
-            "Only **new/unclassified** rows are billed (dedup + `WHERE sentiment IS NULL`). Extended-thinking "
-            "output adds variance, so treat these as order-of-magnitude, not precise. Mocked sources incur "
-            "**no** collection cost today but would in production (paid X/Meta/TikTok/Trustpilot access).")
+            "Treat these as ballpark. Mocked sources cost nothing today but would need paid access in production.")
