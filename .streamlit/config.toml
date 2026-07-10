@@ -4,3 +4,8 @@ base = "light"
 
 [server]
 headless = true
+
+[client]
+# Hides the top-right toolbar, including the GitHub source/fork badge that
+# Streamlit Cloud shows for public-repo apps.
+toolbarMode = "minimal"
