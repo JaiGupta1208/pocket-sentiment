@@ -65,7 +65,7 @@ def classify_with_claude(rows, key):
             model=MODEL, max_tokens=2000, system=SYSTEM,
             messages=[{"role": "user", "content": json.dumps(payload, ensure_ascii=False)}],
         )
-        text = msg.content[0].text.strip()
+        text = "".join(b.text for b in msg.content if b.type == "text").strip()
         if text.startswith("```"):
             text = text.split("```")[1].replace("json", "", 1).strip()
         try:
