@@ -1,12 +1,15 @@
 """Pocket — Voice of Customer dashboard (Task 3)."""
 import json
+import os
 import pandas as pd
 import plotly.express as px
 import streamlit as st
 
 import store
 
-st.set_page_config(page_title="Pocket — Voice of Customer", page_icon="🎙️", layout="wide")
+LOGO = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "pocket_logo.png")
+
+st.set_page_config(page_title="Pocket — Voice of Customer", page_icon=LOGO, layout="wide")
 
 SENTIMENT_COLORS = {"positive": "#16a34a", "neutral": "#9ca3af", "negative": "#dc2626", "mixed": "#f59e0b"}
 SOURCE_LABELS = {
@@ -35,7 +38,8 @@ if df.empty:
     st.stop()
 
 # ---------------- sidebar ----------------
-st.sidebar.title("🎙️ Pocket")
+if os.path.exists(LOGO):
+    st.sidebar.image(LOGO, width=130)
 include_mock = st.sidebar.toggle("Show mock sources", value=False)
 all_sources = sorted(df["source"].unique(), key=lambda s: SOURCE_LABELS.get(s, s))
 real_sources = sorted(df[df["is_mock"] == 0]["source"].unique())
@@ -49,7 +53,7 @@ if not include_mock:
     view = view[view["is_mock"] == 0]
 
 # ---------------- header ----------------
-st.title("Pocket — Voice of Customer")
+st.title("Voice of Customer")
 dates = view["date"].dropna()
 span = f" · {dates.min():%b %d} to {dates.max():%b %d}" if len(dates) else ""
 st.caption(f"{len(view):,} mentions from {view['source'].nunique()} places people talk about Pocket{span}")
