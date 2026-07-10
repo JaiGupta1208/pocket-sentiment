@@ -9,6 +9,10 @@ import store
 
 LOGO = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "pocket_logo.png")
 
+# The time view starts here: ~all chatter is the launch ramp onward, and a few stray
+# older mentions would otherwise stretch every date range across empty years.
+TREND_START = pd.Timestamp("2025-12-01", tz="UTC")
+
 st.set_page_config(page_title="Pocket — Voice of Customer", page_icon=LOGO, layout="wide")
 
 SENTIMENT_COLORS = {"positive": "#16a34a", "neutral": "#9ca3af", "negative": "#dc2626", "mixed": "#f59e0b"}
@@ -88,8 +92,9 @@ if not include_mock:
 
 # ---------------- header ----------------
 st.title("Voice of Customer")
-dates = view["date"].dropna()
-span = f" · {dates.min():%b %Y} to {dates.max():%b %Y}" if len(dates) else ""
+windowed = view["created_at"].dropna()
+windowed = windowed[windowed >= TREND_START]
+span = f" · {windowed.min():%b %Y} to {windowed.max():%b %Y}" if len(windowed) else ""
 st.caption(f"{len(view):,} mentions from {view['source'].nunique()} places people talk about Pocket{span}")
 
 tab_overview, tab_themes, tab_sources, tab_feed, tab_ops = st.tabs(
@@ -114,9 +119,10 @@ with tab_overview:
     st.plotly_chart(fig, use_container_width=True)
 
     st.subheader("Chatter over time")
-    ts = view.dropna(subset=["date"]).copy()
+    ts = view.dropna(subset=["created_at"]).copy()
+    ts = ts[ts["created_at"] >= TREND_START]
     if len(ts):
-        ts["week"] = pd.to_datetime(ts["date"]).dt.to_period("W").dt.start_time
+        ts["week"] = ts["created_at"].dt.tz_localize(None).dt.to_period("W").dt.start_time
         trend = ts.groupby(["week", "sentiment"]).size().reset_index(name="n")
         fig2 = px.bar(trend, x="week", y="n", color="sentiment", color_discrete_map=SENTIMENT_COLORS)
         fig2.update_layout(height=320, xaxis_title="", yaxis_title="", legend_title="", margin=dict(l=0, r=0, t=6, b=0))
