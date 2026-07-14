@@ -13,7 +13,7 @@ LOGO = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "pocke
 # older mentions would otherwise stretch every date range across empty years.
 TREND_START = pd.Timestamp("2025-12-01", tz="UTC")
 
-st.set_page_config(page_title="Pocket — Voice of Customer", page_icon=LOGO, layout="wide")
+st.set_page_config(page_title="Pocket · Voice of Customer", page_icon=LOGO, layout="wide")
 
 SENTIMENT_COLORS = {"positive": "#16a34a", "neutral": "#9ca3af", "negative": "#dc2626", "mixed": "#f59e0b"}
 SOURCE_LABELS = {
@@ -49,56 +49,56 @@ THEME_ACTIONS = {
     "device_reliability": [
         "Ship a firmware watchdog: auto-recover and notify instead of dying silently mid-recording.",
         "Add a diagnostics screen in the app so support can see what failed without email ping-pong.",
-        "Offer proactive replacements for known-bad units — reliability complaints compound fastest.",
+        "Offer proactive replacements for known-bad units. Reliability complaints compound fastest.",
     ],
     "price_value": [
-        "Publish a clear free-vs-Pro comparison — most price complaints read as confusion about what's paid.",
+        "Publish a clear free-vs-Pro comparison. Most price complaints read as confusion about what's paid.",
         "Trial month of Pro with the hardware, so the subscription proves its value before it bills.",
-        "Reframe marketing around time saved per week, not features — value objections need an ROI answer.",
+        "Reframe marketing around time saved per week, not features. Value objections need an ROI answer.",
     ],
     "comparison_competitor": [
-        "Publish an honest Pocket-vs-Plaud/Otter comparison page — shoppers are building their own on Reddit.",
+        "Publish an honest Pocket-vs-Plaud/Otter comparison page. Shoppers are building their own on Reddit.",
         "Lean into what's genuinely different (screenless, wearable, on-the-go capture) in ads and listings.",
         "Seed reviews with the creators doing head-to-head comparisons; their videos dominate the search results.",
     ],
     "customer_support": [
-        "Set a visible first-response SLA — most complaints are about silence, not the resolution.",
+        "Set a visible first-response SLA. Most complaints are about silence, not the resolution.",
         "Add order-status and return self-service; a big share of tickets never needed a human.",
         "Staff up support ahead of launches, when ticket volume and public complaints spike together.",
     ],
     "privacy": [
-        "Publish a plain-English page on what's recorded, stored, and deletable — link it from the app.",
+        "Publish a plain-English page on what's recorded, stored, and deletable, and link it from the app.",
         "Add a visible recording indicator and one-tap pause for sensitive moments.",
         "Explain consent norms by region in onboarding; uncertainty here kills word-of-mouth.",
     ],
     "app_experience": [
-        "Prioritise search across past recordings — it's the most-requested missing feature.",
+        "Prioritise search across past recordings. It's the most requested missing feature.",
         "Add folders/tags for organising recordings; heavy users are hitting a wall.",
         "Speed up sync; 'recording exists but won't load' reads as data loss to users.",
     ],
     "shipping_delivery": [
         "Show honest lead times at checkout and email proactively when they slip.",
-        "Complaints cluster around launches — pre-position inventory or cap orders.",
+        "Complaints cluster around launches, so pre-position inventory or cap orders.",
     ],
     "summary_quality": [
-        "Add a 'fix this summary' feedback button — misattributed statements are the sharpest complaint.",
+        "Add a 'fix this summary' feedback button. Misattributed statements are the sharpest complaint.",
         "Let users edit summaries before sharing; trust rises when they can correct the record.",
     ],
     "transcription_accuracy": [
-        "Tune for accents and noisy rooms — the praised baseline slips exactly there.",
+        "Tune for accents and noisy rooms, where the praised baseline slips.",
         "Custom vocabulary (names, jargon) would fix the most common repeated errors.",
     ],
     "battery_life": [
         "A battery-saver capture mode and clearer battery expectations in marketing.",
     ],
     "magnet_attachment": [
-        "Offer a stronger clip/magnet accessory — people are losing devices off their clothes.",
+        "Offer a stronger clip/magnet accessory. People are losing devices off their clothes.",
     ],
     "hardware_build": [
         "Tighten QC on casing finish; scratched-on-arrival units drive disproportionate anger.",
     ],
     "ease_of_setup": [
-        "Setup is a strength — feature the '2-minute setup' in listings and ads.",
+        "Setup is a strength. Feature the '2-minute setup' in listings and ads.",
     ],
 }
 
@@ -172,9 +172,9 @@ st.sidebar.divider()
 if st.sidebar.button("Refresh data", use_container_width=True,
                      help="Pulls new mentions, checks relevance, tags them, and updates the weekly pulse."):
     import refresh as _refresh
-    with st.status("Refreshing — this takes a few minutes...", expanded=True) as _status:
+    with st.status("Refreshing. This takes a few minutes...", expanded=True) as _status:
         for step, ok, detail in _refresh.run_refresh(log=lambda m: None):
-            st.write(("ok — " if ok else "skipped — ") + f"{step}: {detail}")
+            st.write(("ok: " if ok else "skipped: ") + f"{step}: {detail}")
         _status.update(label="Refresh finished", state="complete")
     load.clear()
     load_weekly.clear()
@@ -192,8 +192,8 @@ windowed = windowed[windowed >= TREND_START]
 span = f" · {windowed.min():%b %Y} to {windowed.max():%b %Y}" if len(windowed) else ""
 st.caption(f"{len(view):,} mentions from {view['source'].nunique()} places people talk about Pocket{span}")
 
-tab_overview, tab_themes, tab_sources, tab_feed, tab_pulse, tab_ops = st.tabs(
-    ["Overview", "Themes", "Sources", "Feed", "Weekly pulse", "How it works"])
+tab_overview, tab_themes, tab_sources, tab_feed, tab_pulse = st.tabs(
+    ["Overview", "Themes", "Sources", "Feed", "Weekly pulse"])
 
 # ================= OVERVIEW =================
 with tab_overview:
@@ -206,8 +206,8 @@ with tab_overview:
     bp, dp = _posrate(buyers), _posrate(disc)
     if bp is not None and dp is not None and len(buyers) >= 20 and len(disc) >= 20 and bp - dp >= 10:
         insights.append(f"People who own it are happy: app-store reviewers run {bp:.0f}% positive. "
-                        f"The wider conversation on Reddit and YouTube — much of it people still deciding "
-                        f"whether to buy — runs {dp:.0f}%.")
+                        f"The wider conversation on Reddit and YouTube, much of it people still deciding "
+                        f"whether to buy, runs {dp:.0f}%.")
     expl0 = view.explode("themes_list").dropna(subset=["themes_list"])
     if len(expl0):
         tg = expl0.groupby("themes_list")
@@ -221,7 +221,7 @@ with tab_overview:
             loud = big.sort_values("neg", ascending=False).iloc[0]
             if loud.name != w.name:
                 insights.append(f"{loud.name.replace('_', ' ').capitalize()} draws the most complaints "
-                                f"outright — {int(loud['neg'])} negative mentions.")
+                                f"outright, with {int(loud['neg'])} negative mentions.")
     if insights:
         with st.container(border=True):
             st.markdown("**The read**")
@@ -231,9 +231,9 @@ with tab_overview:
         st.markdown(
             "An AI model reads every comment and tags it **positive, negative, neutral or mixed**, plus "
             "the topics it touches. \"Negative\" means the person is describing a problem or "
-            "disappointment in their own words — it isn't a star-rating cutoff or a keyword count.\n\n"
+            "disappointment in their own words. It isn't a star-rating cutoff or a keyword count.\n\n"
             "So when a topic shows \"72% negative\", it means 72% of the *comments that mention it* are "
-            "complaints — a share of the conversation, **not** a product failure rate.\n\n"
+            "complaints. That's a share of the conversation, **not** a product failure rate.\n\n"
             "Every tag carries a confidence score, and the least-sure calls are surfaced in the Feed "
             "for a human to check. Comments about a different \"pocket\" (the Firefox app, pocket "
             "knives...) are detected and left out entirely.")
@@ -244,9 +244,9 @@ with tab_overview:
     rated = view[view["rating"].notna()]
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("Mentions", f"{total:,}")
-    c2.metric("Positive", f"{pos/total*100:.0f}%" if total else "—")
-    c3.metric("Negative", f"{neg/total*100:.0f}%" if total else "—")
-    c4.metric("Avg rating", f"{rated['rating'].mean():.1f}★" if len(rated) else "—")
+    c2.metric("Positive", f"{pos/total*100:.0f}%" if total else "n/a")
+    c3.metric("Negative", f"{neg/total*100:.0f}%" if total else "n/a")
+    c4.metric("Avg rating", f"{rated['rating'].mean():.1f}★" if len(rated) else "n/a")
 
     st.subheader("How people feel")
     mix = view["sentiment"].value_counts().reindex(["positive", "neutral", "negative", "mixed"]).fillna(0)
@@ -270,7 +270,7 @@ with tab_themes:
     if len(exploded):
         # ---- The big issues: what people say, and what could be done about it ----
         st.subheader("The big issues")
-        st.caption("Ranked by how much they hurt — how many complaints, and how one-sided the "
+        st.caption("Ranked by how much they hurt: how many complaints, and how one-sided the "
                    "conversation is. Open one to read real comments and a suggested fix.")
         g0 = exploded.groupby("themes_list")
         q = pd.DataFrame({"mentions": g0.size(),
@@ -280,7 +280,7 @@ with tab_themes:
         q["priority"] = q["negatives"] * q["rate"]
         for _, row in q.sort_values("priority", ascending=False).head(5).iterrows():
             label = row["theme"].replace("_", " ")
-            header = (f"{label} — {int(row['negatives'])} of {int(row['mentions'])} comments "
+            header = (f"{label}: {int(row['negatives'])} of {int(row['mentions'])} comments "
                       f"that mention it are negative ({int(row['rate'])}%)")
             with st.expander(header):
                 cand = view[(view["sentiment"] == "negative")
@@ -292,7 +292,7 @@ with tab_themes:
                     if c["source"] in seen_sources and shown < len(cand) - 1:
                         continue
                     quote = str(c["text"]).strip().replace("\n", " ")[:260]
-                    st.caption(f"“{quote}…” — {c['source_label']}")
+                    st.caption(f"“{quote}…” ({c['source_label']})")
                     seen_sources.add(c["source"]); shown += 1
                     if shown == 2:
                         break
@@ -301,8 +301,7 @@ with tab_themes:
                     st.markdown("**What could Pocket do about it**")
                     for a in actions:
                         st.markdown(f"- {a}")
-                    st.caption("Suggested starting points drafted from the comments above — for the "
-                               "team to pressure-test, not decisions.")
+                    st.caption("Drafted from the comments above. Starting points for the team, not decisions.")
 
         st.subheader("What they talk about")
         theme_sent = exploded.groupby(["themes_list", "sentiment"]).size().reset_index(name="n")
@@ -312,10 +311,9 @@ with tab_themes:
         fig.update_layout(height=max(300, 26 * len(order)), yaxis_title="", xaxis_title="",
                           legend_title="", margin=dict(l=0, r=0, t=6, b=0))
         st.plotly_chart(fig, use_container_width=True)
-        st.caption("Counts are comments, tagged by the AI model — see “How comments get labelled” on Overview.")
 
         st.subheader("Theme health")
-        st.caption("Rate matters as much as volume — a small theme can be almost all negative.")
+        st.caption("Rate matters as much as volume: a small theme can be almost all negative.")
         min_n = st.number_input("Minimum mentions to show", min_value=1, max_value=100, value=5, step=1)
         g = exploded.groupby("themes_list")
         health = pd.DataFrame({
@@ -358,18 +356,18 @@ with tab_sources:
     st.dataframe(score, use_container_width=True, hide_index=True)
     st.caption("Worth knowing when you read this: App Store and Google Play are mostly verified owners "
                "writing reviews, while Reddit and YouTube skew toward people still deciding whether to "
-               "buy. That's why the numbers differ so sharply — and that gap is the most useful thing "
+               "buy. That's why the numbers differ so sharply, and that gap is the most useful thing "
                "on this page.")
 
 # ================= FEED =================
 with tab_feed:
-    st.caption("The raw comments behind every number — filter, search, and check the AI's calls.")
+    st.caption("The raw comments behind every number. Filter, search, and check the AI's calls.")
     fc1, fc2, fc3 = st.columns(3)
     sent_filter = fc1.multiselect("Mood", ["positive", "neutral", "negative", "mixed"], [])
     theme_options = sorted({t for lst in view["themes_list"] for t in lst})
     theme_filter = fc2.selectbox("Topic", ["Anything"] + theme_options)
     search = fc3.text_input("Search", placeholder="e.g. Plaud, subscription, battery...")
-    st.caption(f"Try searching {SEARCH_HINTS} — or a competitor, a feature, or a complaint in "
+    st.caption(f"Try searching {SEARCH_HINTS}, or a competitor, a feature, or a complaint in "
                "the customer's own words.")
 
     gc1, gc2 = st.columns([1, 2])
@@ -392,7 +390,7 @@ with tab_feed:
         dot = SENTIMENT_COLORS.get(r["sentiment"], "#9ca3af")
         mock = " · mock" if r["is_mock"] else ""
         stars = f" · {int(r['rating'])}★" if pd.notna(r["rating"]) else ""
-        conf = f" · conf {r['confidence']:.2f}" if pd.notna(r["confidence"]) else " · conf —"
+        conf = f" · conf {r['confidence']:.2f}" if pd.notna(r["confidence"]) else " · conf n/a"
         st.markdown(f"<span style='color:{dot};font-weight:600'>●</span> **{r['source_label']}**{mock} · "
                     f"{r['sentiment']}{stars}{conf}", unsafe_allow_html=True)
         st.write(r["text"][:600] + ("…" if len(str(r["text"])) > 600 else ""))
@@ -407,9 +405,9 @@ with tab_feed:
 with tab_pulse:
     wk = load_weekly()
     st.caption("One sentiment score per week, so a launch, a price change or a marketing push shows "
-               "up as movement — not anecdotes. Score = % positive minus % negative that week.")
+               "up as movement, not anecdotes. Score = % positive minus % negative that week.")
     if wk.empty:
-        st.info("No weekly data yet — run a refresh to build it.")
+        st.info("No weekly data yet. Run a refresh to build it.")
     else:
         latest, prev = wk.iloc[-1], (wk.iloc[-2] if len(wk) > 1 else None)
         m1, m2, m3 = st.columns(3)
@@ -448,132 +446,3 @@ with tab_pulse:
                     st.divider()
         st.caption("Summaries are written by the AI model from that week's comments at refresh time. "
                    "Refresh from the sidebar; designed to run daily on a schedule in production.")
-
-# ================= HOW IT WORKS =================
-with tab_ops:
-    real_df = df[df["is_mock"] == 0]
-    n_real, n_mock = len(real_df), int((df["is_mock"] == 1).sum())
-
-    # ---- A. Pipeline ----
-    st.subheader("How a comment gets here")
-    st.markdown(
-        "```text\n"
-        "9 sources  →  a collector per source  →  one shared format\n"
-        "           →  store + dedup  →  relevance check (is this our Pocket?)\n"
-        "           →  AI tags sentiment & theme  →  this dashboard + weekly pulse\n"
-        "```")
-    st.markdown(
-        "- Each source has its own collector; they all output the same fields, so nothing downstream cares "
-        "where a comment came from.\n"
-        "- Every row's id is a hash of **source + the platform's own id**, so re-running a collector can't "
-        "create duplicates.\n"
-        "- An AI model checks each mention is actually about this Pocket, then tags sentiment, up to three "
-        "themes, and a confidence.")
-    st.info("It's a snapshot you refresh (sidebar button), not a live stream. A production version runs "
-            "the same pipeline on a daily schedule.", icon="ℹ️")
-
-    # ---- B. Real vs mock ----
-    st.subheader("What's real, what's mocked")
-    counts = df.groupby("source").size()
-    src_rows = []
-    for s, (status, path) in SOURCE_STATUS.items():
-        src_rows.append({"source": SOURCE_LABELS.get(s, s), "status": status,
-                         "mentions": int(counts.get(s, 0)),
-                         "how it's collected / production path": path})
-    src_tbl = pd.DataFrame(src_rows).sort_values(["status", "mentions"], ascending=[True, False])
-    st.dataframe(src_tbl, use_container_width=True, hide_index=True)
-    st.caption(f"{n_real:,} real (App Store, Google Play, Reddit, YouTube) · {n_mock} mocked and labelled "
-               "(Trustpilot, X, Facebook, Instagram, TikTok). Mocked rows stay out of the headline numbers "
-               "unless you toggle them on.")
-    if off_topic_n:
-        st.caption(f"Data quality: a relevance check removed **{off_topic_n}** off-topic mentions before "
-                   "anything you see here — a different “pocket” (Firefox Pocket, pocket knives, "
-                   "generic workflow talk), mostly from Reddit. “Pocket” is a noisy search term, so "
-                   "each mention is checked for whether it's actually about this product.")
-
-    # ---- C. Cadence ----
-    st.subheader("How often it updates")
-    cc1, cc2 = st.columns(2)
-    with cc1:
-        st.markdown("**Every day**")
-        st.markdown("- Pull new mentions, dedupe, tag the new ones\n- Skim the urgent negatives")
-        st.markdown("**During a launch or incident**")
-        st.markdown("- Pull the hot sources more often (where the API lets us)\n- Watch for spikes")
-    with cc2:
-        st.markdown("**Every week**")
-        st.markdown("- Read the Weekly pulse; look at theme trends by count *and* rate\n"
-                    "- Check the low-confidence calls\n- Pick something to act on, note what changed")
-        st.markdown("**Every month**")
-        st.markdown("- Revisit the themes, sources, cost, and alert levels\n"
-                    "- Re-check accuracy against a hand-labelled sample")
-    st.caption("How often we can actually pull depends on each platform's API.")
-
-    # ---- D. Owner ----
-    st.subheader("Who runs it")
-    oc1, oc2 = st.columns(2)
-    with oc1:
-        st.markdown("**Day to day** — a Customer Experience / Support lead")
-        st.markdown("- ~15 min a day on the negatives\n- Sends defects to product, messaging gaps to marketing\n"
-                    "- Keeps the pipeline running and spot-checks the AI")
-        st.markdown("**The founder** dips in weekly for the big themes and decisions — not every day.")
-    with oc2:
-        st.markdown("**The weekly loop**")
-        st.markdown("1. Check alerts\n2. See which negatives are rising\n3. Read a few real comments\n"
-                    "4. Sanity-check the tags\n5. Assign an action\n6. See if it improved next week")
-
-    # ---- E. Alerts ----
-    st.subheader("What sets off an alert")
-    st.markdown(
-        "- Negatives cross **30%** in a day\n"
-        "- Volume jumps past **3×** the usual week\n"
-        "- A **1★** mentions *shipping, damaged, refund,* or *no response*\n"
-        "- Complaints about *reliability, transcription, shipping,* or *support* suddenly climb\n"
-        "- A theme gets sharply more negative week over week\n"
-        "- Something serious comes in that the AI wasn't sure about\n"
-        "- A collector breaks, or a source goes quiet")
-    st.caption("These are starting points — we'd tune them once we know what normal looks like. "
-               "Designed, not yet wired to Slack.")
-
-    # ---- F. QA ----
-    st.subheader("Keeping the AI honest")
-    conf = real_df["confidence"].dropna()
-    drift = df["themes_list"].explode().dropna()
-    drift_tags = sorted(set(drift) - set(THEME_TAXONOMY))
-    drift_rows = int(df["themes_list"].apply(lambda l: any(t not in THEME_TAXONOMY for t in l)).sum())
-    q1, q2, q3, q4 = st.columns(4)
-    q1.metric("Avg confidence", f"{conf.mean():.2f}" if len(conf) else "—")
-    q2.metric("Median confidence", f"{conf.median():.2f}" if len(conf) else "—")
-    q3.metric("Below 0.70", f"{(conf < 0.70).mean()*100:.0f}%" if len(conf) else "—")
-    q4.metric("Below 0.50", f"{(conf < 0.50).mean()*100:.0f}%" if len(conf) else "—")
-    st.caption(f"Confidence is the model's own certainty in each call (n={len(conf):,}) — a signal for what to "
-               "double-check, not a measured accuracy.")
-    st.markdown(
-        "- Hand-label ~50–100 mentions and compare against the AI to get a real accuracy read\n"
-        "- Work the low-confidence queue in the Feed\n"
-        "- Cross-check star ratings against predicted sentiment where we have stars\n"
-        "- Don't let a serious-but-unsure comment vanish into an aggregate")
-    if drift_tags:
-        st.caption(f"The AI coined {len(drift_tags)} tag(s) outside the 16 set themes across "
-                   f"{drift_rows} row(s): {', '.join(drift_tags)} — worth a taxonomy look.")
-
-    # ---- G. Cost ----
-    st.subheader("What it costs")
-    st.caption("AI tagging is the only thing that costs money. Numbers are directional — the maths is below.")
-    cost_tbl = pd.DataFrame({
-        "item": ["Collecting (App Store/Play/Reddit/YouTube)", "AI tagging (relevance + sentiment + weekly notes)",
-                 "Storage", "Hosting", "Someone to run it"],
-        "today (~800/mo)": ["Free", "~$3 / mo", "SQLite — free", "Streamlit — free", "~15 min/day"],
-        "10× (~8,000/mo)": ["Free; paid access for mocked sources in prod", "~$25–30 / mo",
-                            "Postgres — ~$15–50/mo", "Paid host — ~$20–50/mo", "~30 min/day"],
-    })
-    st.dataframe(cost_tbl, use_container_width=True, hide_index=True)
-    with st.expander("The maths behind the AI cost"):
-        st.markdown(
-            "20 mentions per call, ~300 tokens of text each. Only new mentions get billed, and each one "
-            "passes through two AI steps (relevance, then tagging) plus a small weekly-summary job.\n\n"
-            "```text\n"
-            "per item  ≈ 330 in + 90 out tokens ≈ $0.0023 per pass (mid-tier model pricing, an assumption)\n"
-            "800/mo    ≈ ~$3/mo across both passes\n"
-            "8,000/mo  ≈ ~$25–30/mo\n"
-            "```\n"
-            "Treat these as ballpark. Mocked sources cost nothing today but would need paid access in production.")
