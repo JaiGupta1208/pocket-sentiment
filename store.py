@@ -23,7 +23,8 @@ CREATE TABLE IF NOT EXISTS mentions (
     sentiment TEXT,                 -- positive | negative | neutral | mixed
     themes TEXT,                    -- JSON array of theme tags
     confidence REAL,
-    classified_at TEXT
+    classified_at TEXT,
+    relevant INTEGER                -- 1 = about this Pocket, 0 = off-topic (see relevance.py); NULL = unjudged
 );
 CREATE INDEX IF NOT EXISTS idx_source ON mentions(source);
 CREATE INDEX IF NOT EXISTS idx_sentiment ON mentions(sentiment);

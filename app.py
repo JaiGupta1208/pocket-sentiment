@@ -75,6 +75,13 @@ if df.empty:
     st.warning("No data yet.")
     st.stop()
 
+# Drop off-topic mentions — a different "pocket" (Firefox Pocket, pocket knives, etc.),
+# flagged by the Claude relevance pass (relevance.py). NULL/unjudged rows are kept.
+off_topic_n = 0
+if "relevant" in df.columns:
+    off_topic_n = int((df["relevant"] == 0).sum())
+    df = df[df["relevant"] != 0].copy()
+
 # ---------------- sidebar ----------------
 if os.path.exists(LOGO):
     st.sidebar.image(LOGO, width=130)
@@ -320,6 +327,11 @@ with tab_ops:
     st.caption(f"{n_real:,} real (App Store, Google Play, Reddit, YouTube) · {n_mock} mocked and labelled "
                "(Trustpilot, X, Facebook, Instagram, TikTok). Mocked rows stay out of the headline numbers "
                "unless you toggle them on.")
+    if off_topic_n:
+        st.caption(f"Data quality: a relevance check removed **{off_topic_n}** off-topic mentions before "
+                   "anything you see here — a different “pocket” (Firefox Pocket, pocket knives, "
+                   "generic workflow talk), mostly from Reddit. “Pocket” is a noisy search term, so "
+                   "each mention is checked for whether it's actually about this product.")
 
     # ---- C. Cadence ----
     st.subheader("How often it updates")
