@@ -102,6 +102,36 @@ tab_overview, tab_themes, tab_sources, tab_feed, tab_ops = st.tabs(
 
 # ================= OVERVIEW =================
 with tab_overview:
+    # ---- What matters: the read, computed from the data (conclusions before charts) ----
+    def _posrate(d):
+        return (d["sentiment"] == "positive").mean() * 100 if len(d) else None
+    insights = []
+    buyers = view[view["source"].isin(["appstore", "play"])]
+    disc = view[view["source"].isin(["reddit", "youtube"])]
+    bp, dp = _posrate(buyers), _posrate(disc)
+    if bp is not None and dp is not None and len(buyers) >= 20 and len(disc) >= 20 and bp - dp >= 10:
+        insights.append(f"Owners rate it higher than prospects do: reviewers are {bp:.0f}% positive, "
+                        f"versus {dp:.0f}% on Reddit and YouTube.")
+    expl0 = view.explode("themes_list").dropna(subset=["themes_list"])
+    if len(expl0):
+        tg = expl0.groupby("themes_list")
+        tt = pd.DataFrame({"n": tg.size(), "neg": tg.apply(lambda d: int((d["sentiment"] == "negative").sum()))})
+        tt["rate"] = tt["neg"] / tt["n"] * 100
+        big = tt[tt["n"] >= 10]
+        if len(big):
+            w = big.sort_values("rate", ascending=False).iloc[0]
+            insights.append(f"Highest failure rate: {w.name.replace('_', ' ')}, at {w['rate']:.0f}% negative "
+                            f"across {int(w['n'])} mentions.")
+            loud = big.sort_values("neg", ascending=False).iloc[0]
+            if loud.name != w.name:
+                insights.append(f"Most complaints by volume: {loud.name.replace('_', ' ')} "
+                                f"({int(loud['neg'])} negative).")
+    if insights:
+        with st.container(border=True):
+            st.markdown("**The read**")
+            for line in insights[:3]:
+                st.markdown(f"- {line}")
+
     total = len(view)
     pos = int((view["sentiment"] == "positive").sum())
     neg = int((view["sentiment"] == "negative").sum())
@@ -132,6 +162,37 @@ with tab_overview:
 with tab_themes:
     exploded = view.explode("themes_list").dropna(subset=["themes_list"])
     if len(exploded):
+        # ---- Fix first: reach (how many) vs severity (how negative) ----
+        st.subheader("Fix first")
+        g0 = exploded.groupby("themes_list")
+        q = pd.DataFrame({"mentions": g0.size(),
+                          "negatives": g0.apply(lambda d: int((d["sentiment"] == "negative").sum()))})
+        q["negative rate"] = (q["negatives"] / q["mentions"] * 100).round(0)
+        q = q[(q["mentions"] >= 8) & (q["negatives"] >= 5)].reset_index().rename(columns={"themes_list": "theme"})
+        if len(q):
+            q["label"] = q["theme"].str.replace("_", " ")
+            fig0 = px.scatter(q, x="mentions", y="negative rate", size="negatives", text="label",
+                              color="negative rate", color_continuous_scale="Reds", size_max=42)
+            fig0.update_traces(textposition="top center", cliponaxis=False)
+            fig0.add_vline(x=q["mentions"].median(), line_dash="dot", line_color="#cbcbcb")
+            fig0.add_hline(y=50, line_dash="dot", line_color="#cbcbcb")
+            fig0.update_layout(height=420, xaxis_title="how many people mention it →",
+                               yaxis_title="% negative ↑", coloraxis_showscale=False,
+                               margin=dict(l=0, r=0, t=6, b=0))
+            st.plotly_chart(fig0, use_container_width=True)
+            st.caption("Themes toward the top-right are mentioned often and are mostly negative. "
+                       "Bubble size is the number of negative mentions.")
+            q["priority"] = q["negatives"] * q["negative rate"]
+            for _, row in q.sort_values("priority", ascending=False).head(3).iterrows():
+                st.markdown(f"**{row['label']}** — {int(row['negatives'])} negative "
+                            f"({int(row['negative rate'])}% of its mentions)")
+                cand = view[(view["sentiment"] == "negative")
+                            & view["themes_list"].apply(lambda l: row["theme"] in l)]
+                cand = cand.sort_values("confidence", ascending=False)
+                if len(cand):
+                    quote = str(cand.iloc[0]["text"]).strip().replace("\n", " ")[:200]
+                    st.caption(f"“{quote}…” — {cand.iloc[0]['source_label']}")
+
         st.subheader("What they talk about")
         theme_sent = exploded.groupby(["themes_list", "sentiment"]).size().reset_index(name="n")
         order = exploded["themes_list"].value_counts().index.tolist()
@@ -140,10 +201,6 @@ with tab_themes:
         fig.update_layout(height=max(300, 26 * len(order)), yaxis_title="", xaxis_title="",
                           legend_title="", margin=dict(l=0, r=0, t=6, b=0))
         st.plotly_chart(fig, use_container_width=True)
-
-        st.subheader("Where it hurts most")
-        neg = exploded[exploded.sentiment == "negative"]["themes_list"].value_counts().head(8)
-        st.dataframe(neg.rename("complaints"), use_container_width=True)
 
         st.subheader("Theme health")
         st.caption("Rate matters as much as volume — a small theme can be almost all negative.")
