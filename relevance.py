@@ -75,7 +75,8 @@ def judge_with_claude(rows, key):
     return out
 
 
-def run():
+def run(only_new=False):
+    """only_new=True judges just the rows without a relevance flag yet (cheap refresh)."""
     conn = store.connect()
     cols = [c[1] for c in conn.execute("PRAGMA table_info(mentions)")]
     if "relevant" not in cols:
@@ -87,8 +88,13 @@ def run():
         "UPDATE mentions SET relevant=1 WHERE source NOT IN (?, ?)", JUDGE_SOURCES)
     conn.commit()
 
-    rows = [dict(id=r[0], text=r[1]) for r in conn.execute(
-        "SELECT id, text FROM mentions WHERE source IN (?, ?)", JUDGE_SOURCES)]
+    q = "SELECT id, text FROM mentions WHERE source IN (?, ?)"
+    if only_new:
+        q += " AND relevant IS NULL"
+    rows = [dict(id=r[0], text=r[1]) for r in conn.execute(q, JUDGE_SOURCES)]
+    if not rows:
+        print("relevance: nothing new to judge")
+        return
     key = _key()
     if not key:
         print("no ANTHROPIC_API_KEY — cannot run relevance pass")
